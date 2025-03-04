@@ -22,7 +22,10 @@ hubble:
       nodePort: 31235
     nodeSelector:
       kubernetes.io/os: linux
-      kubernetes.io/hostname: kind-worker3 # used for exporting from docker to host
+      kubernetes.io/hostname: kind-worker3
   relay:
     enabled: true
   enableEnvoyConfig: true
+ingressController: # enabled ingress feature from Cilium Service Mesh
+  enable: true
+  loadbalancerMode: dedicated # each ingress will create its own LB
