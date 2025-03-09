@@ -1,0 +1,45 @@
+# apiVersion: v1
+# kind: Secret
+# metadata:
+#   name: credentials-secret
+#   namespace: capi-system
+# type: Opaque
+# stringData:
+#   AWS_B64ENCODED_CREDENTIALS: "${AWS_B64ENCODED_CREDENTIALS}"
+
+# ---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: capi-operator
+  namespace: capi-operator-system
+spec:
+  interval: 10m
+  timeout: 90s
+  chart:
+    spec:
+      chart: cluster-api-operator
+      version: "v2.7.1"
+      sourceRef:
+        kind: HelmRepository
+        name: capi-operator
+      interval: 5m
+  releaseName: capi-operator
+  install:
+    createNamespace: true
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  test:
+    enable: true
+  driftDetection:
+    mode: enabled
+  values:
+    infrastructure: "aws:v2.7.1"
+    cert-manager:
+      enabled: true
+    configSecret:
+      name: "credentials-secret"
+      namespace: "capa-system"

@@ -54,14 +54,18 @@ module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "20.33.1"
 
-  cluster_name    = "${local.name}"
-  cluster_version = "1.32"
-  cluster_endpoint_public_access = true
+  cluster_name                             = local.name
+  cluster_version                          = "1.32"
+  cluster_endpoint_public_access           = true
   enable_cluster_creator_admin_permissions = true
 
   # EKS Addons
   cluster_addons = {
-    coredns                = {
+    coredns = {
+      most_recent = true
+    }
+
+    eks-pod-identity-agent = {
       most_recent = true
     }
   }
@@ -78,7 +82,7 @@ module "eks" {
       max_size = 5
       # This value is ignored after the initial creation
       # https://github.com/bryantbiggs/eks-desired-size-hack
-      desired_size  = 2
+      desired_size = 2
       # capacity_type = "ON_DEMAND"
     }
   }
@@ -86,43 +90,103 @@ module "eks" {
   tags = local.tags
 }
 
-# resource "terraform_data" "cilium_patch" {
-#   count = var.install_cilium ? 1 : 0
-#   provisioner "local-exec" {
-#     command = "kubectl -n kube-system patch daemonset aws-node --type='strategic' -p='${jsonencode(local.cilium_patch)}'"
-#     environment = {
-#       KUBECONFIG = "./kubeconfig"
-#     }
-#   }
-#   depends_on = [module.kubeconfig]
-# }
+module "cilium" {
+  depends_on = [ module.eks ]
+  source  = "terraform-module/release/helm"
+  version = "2.8.2"
 
-resource "helm_release" "cilium" {
-  depends_on = [module.eks]
-  name       = "cilium"
+  namespace  = "kube-system"
   repository = "https://helm.cilium.io/"
-  chart      = "cilium"
-  version    = "1.17.1"
-  namespace = "kube-system"
 
-  set {
-    name  = "eni.enabled"
-    value = "true"
+  app = {
+    name             = "cilium"
+    version          = "1.17.1"
+    chart            = "cilium"
+    create_namespace = true
+    force_update     = true
+    wait             = true
+    recreate_pods    = false
+    deploy           = 1
   }
 
-  set {
-    name  = "ipam.mode"
-    value = "eni"
+  set = [
+    {
+      name  = "eni.enabled"
+      value = "true"
+    },
+
+    {
+      name  = "ipam.mode"
+      value = "eni"
+    },
+
+    {
+      name  = "egressMasqueradeInterfaces"
+      value = "eth+"
+    },
+
+    {
+      name  = "routingMode"
+      value = "native"
+    }
+  ]
+}
+module "fluxcd" {
+  depends_on = [ module.cilium ]
+  source  = "terraform-module/release/helm"
+  version = "2.8.2"
+
+  namespace  = "flux-system"
+  repository = "oci://ghcr.io/fluxcd-community/charts"
+
+  app = {
+    name             = "flux2"
+    version          = "2.15.0"
+    chart            = "flux2"
+    create_namespace = true
+    force_update     = true
+    wait             = true
+    recreate_pods    = false
+    deploy           = 1
   }
 
-  set {
-    name  = "egressMasqueradeInterfaces"
-    value = "eth+"
+  values = [file("${path.cwd}/templates/flux2_values.yml")]
+
+  set = []
+}
+
+resource "kubernetes_secret" "github_auth" {
+  depends_on = [ module.fluxcd ]
+  metadata {
+    name      = "flux-system"
+    namespace = "flux-system"
   }
 
-  set {
-    name  = "routingMode"
-    value = "native"
+  data = {
+    username = var.github_username
+    password = var.github_token
   }
+}
 
+resource "kubernetes_manifest" "flux_gitrepository" {
+  manifest = {
+    apiVersion = "source.toolkit.fluxcd.io/v1"
+    kind       = "GitRepository"
+    metadata = {
+      name      = "my-app"
+      namespace = "flux-system"
+    }
+    spec = {
+      interval = "5m"
+      url      = "https://github.com/your-org/your-repo.git"
+      ref = {
+        branch = "main"
+      }
+      secretRef = {
+        name = "flux-system"
+      }
+      ignore = "**/*"   # Ignore everything
+      include = ["fluxcd-apps/**"]  # Sync only this folder
+    }
+  }
 }
