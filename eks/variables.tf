@@ -1,10 +1,10 @@
 variable "github_username" {
-  type = string
+  type        = string
   description = "GitHub username"
 }
 
 variable "github_token" {
-  type = string
+  type        = string
   description = "GitHub token"
-  sensitive = true
+  sensitive   = true
 }

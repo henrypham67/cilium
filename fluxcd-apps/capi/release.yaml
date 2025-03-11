@@ -1,13 +1,13 @@
-# apiVersion: v1
-# kind: Secret
-# metadata:
-#   name: credentials-secret
-#   namespace: capi-system
-# type: Opaque
-# stringData:
-#   AWS_B64ENCODED_CREDENTIALS: "${AWS_B64ENCODED_CREDENTIALS}"
+apiVersion: v1
+kind: Secret
+metadata:
+  name: credentials-secret
+  namespace: capi-system
+type: Opaque
+stringData:
+  AWS_B64ENCODED_CREDENTIALS: "${AWS_B64ENCODED_CREDENTIALS}"
 
-# ---
+---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:

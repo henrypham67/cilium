@@ -13,6 +13,26 @@ locals {
   vpc_cidr = "10.0.0.0/16"
   azs      = slice(data.aws_availability_zones.available.names, 0, 3)
 
+  cilium_patch = {
+    spec = {
+      template = {
+        spec = {
+          nodeSelector = {
+            "io.cilium/aws-node-enabled" = "true"
+          }
+        }
+      }
+    }
+  }
+
+  taints_cilium = {
+    cilium = {
+      key    = "node.cilium.io/agent-not-ready"
+      value  = "true"
+      effect = "NO_EXECUTE"
+    }
+  }
+
   tags = {
     Example    = local.name
     GithubRepo = "terraform-aws-eks"
@@ -59,17 +79,6 @@ module "eks" {
   cluster_endpoint_public_access           = true
   enable_cluster_creator_admin_permissions = true
 
-  # EKS Addons
-  cluster_addons = {
-    coredns = {
-      most_recent = true
-    }
-
-    eks-pod-identity-agent = {
-      most_recent = true
-    }
-  }
-
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
 
@@ -90,10 +99,50 @@ module "eks" {
   tags = local.tags
 }
 
+data "aws_eks_cluster_auth" "this" {
+  name = local.name
+}
+
+module "kubeconfig" {
+  depends_on = [module.eks]
+  source     = "github.com/littlejo/terraform-kubernetes-kubeconfig?ref=no-experiment"
+
+  current_context = "eks"
+  clusters = [{
+    name                       = "kubernetes"
+    server                     = module.eks.cluster_endpoint
+    certificate_authority_data = module.eks.cluster_certificate_authority_data
+  }]
+  contexts = [{
+    name         = "eks",
+    cluster_name = "kubernetes",
+    user         = "eks",
+  }]
+  users = [{
+    name  = "eks",
+    token = data.aws_eks_cluster_auth.this.token
+    }
+  ]
+}
+
+resource "terraform_data" "delete_kube_proxy" {
+  depends_on = [module.kubeconfig]
+  provisioner "local-exec" {
+    command = <<-EOT
+      kubectl -n kube-system patch daemonset aws-node --type='strategic' -p='${jsonencode(local.cilium_patch)}'
+      kubectl -n kube-system delete ds kube-proxy || true
+      kubectl -n kube-system delete cm kube-proxy || true
+    EOT
+    environment = {
+      KUBECONFIG = "./kubeconfig"
+    }
+  }
+}
+
 module "cilium" {
-  depends_on = [ module.eks ]
-  source  = "terraform-module/release/helm"
-  version = "2.8.2"
+  depends_on = [module.eks, terraform_data.delete_kube_proxy]
+  source     = "terraform-module/release/helm"
+  version    = "2.8.2"
 
   namespace  = "kube-system"
   repository = "https://helm.cilium.io/"
@@ -109,32 +158,16 @@ module "cilium" {
     deploy           = 1
   }
 
-  set = [
-    {
-      name  = "eni.enabled"
-      value = "true"
-    },
-
-    {
-      name  = "ipam.mode"
-      value = "eni"
-    },
-
-    {
-      name  = "egressMasqueradeInterfaces"
-      value = "eth+"
-    },
-
-    {
-      name  = "routingMode"
-      value = "native"
-    }
+  values = [
+    templatefile("${path.module}/values/cilium.yaml", {
+      CLUSTER_ENDPOINT = replace(module.eks.cluster_endpoint, "https://", "")
+    })
   ]
 }
 module "fluxcd" {
-  depends_on = [ module.cilium ]
-  source  = "terraform-module/release/helm"
-  version = "2.8.2"
+  depends_on = [module.cilium]
+  source     = "terraform-module/release/helm"
+  version    = "2.8.2"
 
   namespace  = "flux-system"
   repository = "oci://ghcr.io/fluxcd-community/charts"
@@ -150,13 +183,13 @@ module "fluxcd" {
     deploy           = 1
   }
 
-  values = [file("${path.cwd}/templates/flux2_values.yml")]
+  values = [file("${path.cwd}/values/flux2_values.yml")]
 
   set = []
 }
 
 resource "kubernetes_secret" "github_auth" {
-  depends_on = [ module.fluxcd ]
+  depends_on = [module.fluxcd]
   metadata {
     name      = "flux-system"
     namespace = "flux-system"
@@ -168,25 +201,15 @@ resource "kubernetes_secret" "github_auth" {
   }
 }
 
-resource "kubernetes_manifest" "flux_gitrepository" {
-  manifest = {
-    apiVersion = "source.toolkit.fluxcd.io/v1"
-    kind       = "GitRepository"
-    metadata = {
-      name      = "my-app"
-      namespace = "flux-system"
-    }
-    spec = {
-      interval = "5m"
-      url      = "https://github.com/your-org/your-repo.git"
-      ref = {
-        branch = "main"
-      }
-      secretRef = {
-        name = "flux-system"
-      }
-      ignore = "**/*"   # Ignore everything
-      include = ["fluxcd-apps/**"]  # Sync only this folder
-    }
-  }
+resource "kubectl_manifest" "flux_repo" {
+  depends_on = [module.eks, kubernetes_secret.github_auth]
+  yaml_body = templatefile("${path.cwd}/manifests/flux_repo.yaml", {
+    GIT_REPO_NAME        = "cilium"
+    GIT_REPO_NAMESPACE   = "flux-system"
+    REFRESH_INTERVAL     = "5m"
+    GIT_REPO_URL         = "https://github.com/henrypham67/cilium.git"
+    GIT_REPO_BRANCH      = "main"
+    GIT_REPO_SECRET_NAME = "flux-system"
+    GIT_REPO_IGNORE      = "!/fluxcd-apps"
+  })
 }
