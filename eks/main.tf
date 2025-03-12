@@ -129,9 +129,9 @@ resource "terraform_data" "delete_kube_proxy" {
   depends_on = [module.kubeconfig]
   provisioner "local-exec" {
     command = <<-EOT
-      kubectl -n kube-system patch daemonset aws-node --type='strategic' -p='${jsonencode(local.cilium_patch)}'
       kubectl -n kube-system delete ds kube-proxy || true
       kubectl -n kube-system delete cm kube-proxy || true
+      kubectl -n kube-system patch daemonset aws-node --type='strategic' -p='${jsonencode(local.cilium_patch)}'
     EOT
     environment = {
       KUBECONFIG = "./kubeconfig"
