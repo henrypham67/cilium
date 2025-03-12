@@ -206,10 +206,10 @@ resource "kubectl_manifest" "flux_repo" {
   yaml_body = templatefile("${path.cwd}/manifests/flux_repo.yaml", {
     GIT_REPO_NAME        = "cilium"
     GIT_REPO_NAMESPACE   = "flux-system"
-    REFRESH_INTERVAL     = "5m"
+    REFRESH_INTERVAL     = "10m"
     GIT_REPO_URL         = "https://github.com/henrypham67/cilium.git"
     GIT_REPO_BRANCH      = "main"
     GIT_REPO_SECRET_NAME = "flux-system"
-    GIT_REPO_IGNORE      = "!/fluxcd-apps"
+    GIT_REPO_IGNORE      = "    /*\n    !/fluxcd-apps" # Note the leading spaces
   })
 }

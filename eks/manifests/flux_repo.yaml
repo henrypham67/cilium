@@ -11,4 +11,4 @@ spec:
   secretRef:
     name: ${GIT_REPO_SECRET_NAME}
   ignore: |
-    ${GIT_REPO_IGNORE}
+${GIT_REPO_IGNORE}
