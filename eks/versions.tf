@@ -10,9 +10,13 @@ terraform {
       source  = "hashicorp/helm"
       version = "2.17.0"
     }
-    kubectl = {
-      source  = "alekc/kubectl"
-      version = ">= 2.0.0"
+    flux = {
+      source  = "fluxcd/flux"
+      version = ">= 1.2"
+    }
+    github = {
+      source  = "integrations/github"
+      version = ">= 6.1"
     }
   }
 }
