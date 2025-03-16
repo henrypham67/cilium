@@ -1,5 +1,7 @@
 provider "aws" {
-  region = local.region
+  region     = var.aws_region
+  access_key = var.aws_access_key_id
+  secret_key = var.aws_secret_access_key
 }
 
 provider "helm" {
@@ -36,15 +38,11 @@ provider "flux" {
     }
   }
   git = {
-    url = "https://github.com/${var.github_username}/${var.github_repository}.git"
+    branch = "main"
+    url    = "https://github.com/${var.github_username}/${var.github_repository}.git"
     http = {
       username = var.github_username
       password = var.github_token
     }
   }
-}
-
-provider "github" {
-  owner = var.github_username
-  token = var.github_token
 }

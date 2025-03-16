@@ -7,8 +7,7 @@ data "aws_availability_zones" "available" {
 }
 
 locals {
-  name   = "cilium-test"
-  region = "us-west-2"
+  name = "cilium-test"
 
   vpc_cidr = "10.0.0.0/16"
   azs      = slice(data.aws_availability_zones.available.names, 0, 3)
@@ -70,12 +69,16 @@ module "vpc" {
   tags = local.tags
 }
 
+################################################################################
+# EKS
+################################################################################
+
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "20.33.1"
 
   cluster_name                             = local.name
-  cluster_version                          = "1.32"
+  cluster_version                          = var.cluster_version
   cluster_endpoint_public_access           = true
   enable_cluster_creator_admin_permissions = true
 
@@ -163,4 +166,14 @@ module "cilium" {
       CLUSTER_ENDPOINT = replace(module.eks.cluster_endpoint, "https://", "")
     })
   ]
+}
+
+resource "kubernetes_secret" "aws_credentials" {
+  metadata {
+    name = "aws-credentials"
+  }
+  data = {
+    "aws_access_key_id"     = var.aws_access_key_id
+    "aws_secret_access_key" = var.aws_secret_access_key
+  }
 }

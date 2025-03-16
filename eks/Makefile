@@ -49,7 +49,7 @@ clean: ## Clean Terraform files
 
 .PHONY: get-kubeconfig
 get-kubeconfig: ## Get kubeconfig for EKS cluster
-	aws eks update-kubeconfig --name cilium-test --region us-west-2
+	aws eks update-kubeconfig --name cilium-test --region us-west-2 --alias eks
 
 .PHONY: flux-check
 flux-check: ## Check FluxCD installation
