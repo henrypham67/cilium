@@ -1,8 +1,8 @@
 ## TODO:
 
-- Init clusterawsadm
+- Init clusterawsadm (testing)
 - ssh key
-- secret AWS keys
+- secret AWS keys (testing)
 
 ## Reference
 

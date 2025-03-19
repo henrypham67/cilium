@@ -38,3 +38,17 @@ variable "cluster_version" {
   description = "EKS cluster version"
   default     = "1.32"
 }
+
+variable "credentials_secret_name" {
+  type        = string
+  description = "Name of the Kubernetes secret to store AWS credentials"
+  default     = "credentials-secret"
+}
+
+variable "credentials_secret_namespace" {
+  type        = string
+  description = "Namespace of the Kubernetes secret to store AWS credentials"
+  default     = "default"
+}
+
+
