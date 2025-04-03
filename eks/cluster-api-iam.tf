@@ -1,29 +1,23 @@
 
-resource "aws_iam_instance_profile" "awsiam_instance_profile_control_plane" {
+resource "aws_iam_instance_profile" "aws_iam_instance_profile_control_plane" {
   name = "control-plane.cluster-api-provider-aws.sigs.k8s.io"
-  role = [
-    aws_iam_role.awsiam_role_control_plane.arn
-  ]
+  role = aws_iam_role.aws_iam_role_control_plane.name
 }
 
-resource "aws_iam_instance_profile" "awsiam_instance_profile_controllers" {
+resource "aws_iam_instance_profile" "aws_iam_instance_profile_controllers" {
   name = "controllers.cluster-api-provider-aws.sigs.k8s.io"
-  role = [
-    aws_iam_role.awsiam_role_controllers.arn
-  ]
+  role = aws_iam_role.aws_iam_role_controllers.name
 }
 
-resource "aws_iam_instance_profile" "awsiam_instance_profile_nodes" {
+resource "aws_iam_instance_profile" "aws_iam_instance_profile_nodes" {
   name = "nodes.cluster-api-provider-aws.sigs.k8s.io"
-  role = [
-    aws_iam_role.awsiam_role_nodes.arn
-  ]
+  role = aws_iam_role.aws_iam_role_nodes.name
 }
 
-resource "aws_iam_policy" "awsiam_managed_policy_cloud_provider_control_plane" {
+resource "aws_iam_policy" "aws_iam_managed_policy_cloud_provider_control_plane" {
   description = "For the Kubernetes Cloud Provider AWS Control Plane"
-  name = "control-plane.cluster-api-provider-aws.sigs.k8s.io"
-  policy = {
+  name        = "control-plane.cluster-api-provider-aws.sigs.k8s.io"
+  policy = jsonencode({
     Statement = [
       {
         Action = [
@@ -55,6 +49,7 @@ resource "aws_iam_policy" "awsiam_managed_policy_cloud_provider_control_plane" {
           "elasticloadbalancing:AddTags",
           "elasticloadbalancing:AttachLoadBalancerToSubnets",
           "elasticloadbalancing:ApplySecurityGroupsToLoadBalancer",
+          "elasticloadbalancing:SetSecurityGroups",
           "elasticloadbalancing:CreateLoadBalancer",
           "elasticloadbalancing:CreateLoadBalancerPolicy",
           "elasticloadbalancing:CreateLoadBalancerListeners",
@@ -91,13 +86,13 @@ resource "aws_iam_policy" "awsiam_managed_policy_cloud_provider_control_plane" {
       }
     ]
     Version = "2012-10-17"
-  }
+  })
 }
 
-resource "aws_iam_policy" "awsiam_managed_policy_cloud_provider_nodes" {
+resource "aws_iam_policy" "aws_iam_managed_policy_cloud_provider_nodes" {
   description = "For the Kubernetes Cloud Provider AWS nodes"
-  name = "nodes.cluster-api-provider-aws.sigs.k8s.io"
-  policy = {
+  name        = "nodes.cluster-api-provider-aws.sigs.k8s.io"
+  policy = jsonencode({
     Statement = [
       {
         Action = [
@@ -147,13 +142,13 @@ resource "aws_iam_policy" "awsiam_managed_policy_cloud_provider_nodes" {
       }
     ]
     Version = "2012-10-17"
-  }
+  })
 }
 
-resource "aws_iam_policy" "awsiam_managed_policy_controllers" {
+resource "aws_iam_policy" "aws_iam_managed_policy_controllers" {
   description = "For the Kubernetes Cluster API Provider AWS Controllers"
-  name = "controllers.cluster-api-provider-aws.sigs.k8s.io"
-  policy = {
+  name        = "controllers.cluster-api-provider-aws.sigs.k8s.io"
+  policy = jsonencode({
     Statement = [
       {
         Action = [
@@ -166,8 +161,10 @@ resource "aws_iam_policy" "awsiam_managed_policy_controllers" {
           "ec2:AssignPrivateIpAddresses",
           "ec2:UnassignPrivateIpAddresses",
           "ec2:AssociateRouteTable",
+          "ec2:AssociateVpcCidrBlock",
           "ec2:AttachInternetGateway",
           "ec2:AuthorizeSecurityGroupIngress",
+          "ec2:CreateCarrierGateway",
           "ec2:CreateInternetGateway",
           "ec2:CreateEgressOnlyInternetGateway",
           "ec2:CreateNatGateway",
@@ -179,8 +176,10 @@ resource "aws_iam_policy" "awsiam_managed_policy_controllers" {
           "ec2:CreateTags",
           "ec2:CreateVpc",
           "ec2:CreateVpcEndpoint",
+          "ec2:DisassociateVpcCidrBlock",
           "ec2:ModifyVpcAttribute",
           "ec2:ModifyVpcEndpoint",
+          "ec2:DeleteCarrierGateway",
           "ec2:DeleteInternetGateway",
           "ec2:DeleteEgressOnlyInternetGateway",
           "ec2:DeleteNatGateway",
@@ -194,6 +193,7 @@ resource "aws_iam_policy" "awsiam_managed_policy_controllers" {
           "ec2:DescribeAccountAttributes",
           "ec2:DescribeAddresses",
           "ec2:DescribeAvailabilityZones",
+          "ec2:DescribeCarrierGateways",
           "ec2:DescribeInstances",
           "ec2:DescribeInstanceTypes",
           "ec2:DescribeInternetGateways",
@@ -207,6 +207,7 @@ resource "aws_iam_policy" "awsiam_managed_policy_controllers" {
           "ec2:DescribeSecurityGroups",
           "ec2:DescribeSubnets",
           "ec2:DescribeVpcs",
+          "ec2:DescribeDhcpOptions",
           "ec2:DescribeVpcAttribute",
           "ec2:DescribeVpcEndpoints",
           "ec2:DescribeVolumes",
@@ -231,6 +232,7 @@ resource "aws_iam_policy" "awsiam_managed_policy_controllers" {
           "elasticloadbalancing:DescribeLoadBalancerAttributes",
           "elasticloadbalancing:DescribeTargetGroups",
           "elasticloadbalancing:ApplySecurityGroupsToLoadBalancer",
+          "elasticloadbalancing:SetSecurityGroups",
           "elasticloadbalancing:DescribeTags",
           "elasticloadbalancing:ModifyLoadBalancerAttributes",
           "elasticloadbalancing:RegisterInstancesWithLoadBalancer",
@@ -280,7 +282,7 @@ resource "aws_iam_policy" "awsiam_managed_policy_controllers" {
         ]
         Condition = {
           StringLike = {
-            iam:AWSServiceName = "autoscaling.amazonaws.com"
+            "iam:AWSServiceName" = "autoscaling.amazonaws.com"
           }
         }
         Effect = "Allow"
@@ -294,7 +296,7 @@ resource "aws_iam_policy" "awsiam_managed_policy_controllers" {
         ]
         Condition = {
           StringLike = {
-            iam:AWSServiceName = "elasticloadbalancing.amazonaws.com"
+            "iam:AWSServiceName" = "elasticloadbalancing.amazonaws.com"
           }
         }
         Effect = "Allow"
@@ -308,7 +310,7 @@ resource "aws_iam_policy" "awsiam_managed_policy_controllers" {
         ]
         Condition = {
           StringLike = {
-            iam:AWSServiceName = "spot.amazonaws.com"
+            "iam:AWSServiceName" = "spot.amazonaws.com"
           }
         }
         Effect = "Allow"
@@ -338,13 +340,13 @@ resource "aws_iam_policy" "awsiam_managed_policy_controllers" {
       }
     ]
     Version = "2012-10-17"
-  }
+  })
 }
 
-resource "aws_iam_policy" "awsiam_managed_policy_controllers_eks" {
+resource "aws_iam_policy" "aws_iam_managed_policy_controllers_eks" {
   description = "For the Kubernetes Cluster API Provider AWS Controllers"
-  name = "controllers-eks.cluster-api-provider-aws.sigs.k8s.io"
-  policy = {
+  name        = "controllers-eks.cluster-api-provider-aws.sigs.k8s.io"
+  policy = jsonencode({
     Statement = [
       {
         Action = [
@@ -361,7 +363,7 @@ resource "aws_iam_policy" "awsiam_managed_policy_controllers_eks" {
         ]
         Condition = {
           StringLike = {
-            iam:AWSServiceName = "eks.amazonaws.com"
+            "iam:AWSServiceName" = "eks.amazonaws.com"
           }
         }
         Effect = "Allow"
@@ -375,7 +377,7 @@ resource "aws_iam_policy" "awsiam_managed_policy_controllers_eks" {
         ]
         Condition = {
           StringLike = {
-            iam:AWSServiceName = "eks-nodegroup.amazonaws.com"
+            "iam:AWSServiceName" = "eks-nodegroup.amazonaws.com"
           }
         }
         Effect = "Allow"
@@ -389,7 +391,7 @@ resource "aws_iam_policy" "awsiam_managed_policy_controllers_eks" {
         ]
         Condition = {
           StringLike = {
-            iam:AWSServiceName = "eks-fargate.amazonaws.com"
+            "iam:AWSServiceName" = "eks-fargate.amazonaws.com"
           }
         }
         Effect = "Allow"
@@ -399,8 +401,28 @@ resource "aws_iam_policy" "awsiam_managed_policy_controllers_eks" {
       },
       {
         Action = [
+          "iam:ListOpenIDConnectProviders",
+          "iam:GetOpenIDConnectProvider",
+          "iam:CreateOpenIDConnectProvider",
+          "iam:AddClientIDToOpenIDConnectProvider",
+          "iam:UpdateOpenIDConnectProviderThumbprint",
+          "iam:DeleteOpenIDConnectProvider",
+          "iam:TagOpenIDConnectProvider"
+        ]
+        Effect = "Allow"
+        Resource = [
+          "*"
+        ]
+      },
+      {
+        Action = [
           "iam:GetRole",
-          "iam:ListAttachedRolePolicies"
+          "iam:ListAttachedRolePolicies",
+          "iam:DetachRolePolicy",
+          "iam:DeleteRole",
+          "iam:CreateRole",
+          "iam:TagRole",
+          "iam:AttachRolePolicy"
         ]
         Effect = "Allow"
         Resource = [
@@ -469,7 +491,7 @@ resource "aws_iam_policy" "awsiam_managed_policy_controllers_eks" {
         ]
         Condition = {
           StringEquals = {
-            iam:PassedToService = "eks.amazonaws.com"
+            "iam:PassedToService" = "eks.amazonaws.com"
           }
         }
         Effect = "Allow"
@@ -483,8 +505,8 @@ resource "aws_iam_policy" "awsiam_managed_policy_controllers_eks" {
           "kms:DescribeKey"
         ]
         Condition = {
-          ForAnyValue:StringLike = {
-            kms:ResourceAliases = "alias/cluster-api-provider-aws-*"
+          "ForAnyValue:StringLike" = {
+            "kms:ResourceAliases" = "alias/cluster-api-provider-aws-*"
           }
         }
         Effect = "Allow"
@@ -494,11 +516,12 @@ resource "aws_iam_policy" "awsiam_managed_policy_controllers_eks" {
       }
     ]
     Version = "2012-10-17"
-  }
+  })
+
 }
 
-resource "aws_iam_role" "awsiam_role_control_plane" {
-  assume_role_policy = {
+resource "aws_iam_role" "aws_iam_role_control_plane" {
+  assume_role_policy = jsonencode({
     Statement = [
       {
         Action = [
@@ -513,12 +536,12 @@ resource "aws_iam_role" "awsiam_role_control_plane" {
       }
     ]
     Version = "2012-10-17"
-  }
+  })
   name = "control-plane.cluster-api-provider-aws.sigs.k8s.io"
 }
 
-resource "aws_iam_role" "awsiam_role_controllers" {
-  assume_role_policy = {
+resource "aws_iam_role" "aws_iam_role_controllers" {
+  assume_role_policy = jsonencode({
     Statement = [
       {
         Action = [
@@ -533,12 +556,12 @@ resource "aws_iam_role" "awsiam_role_controllers" {
       }
     ]
     Version = "2012-10-17"
-  }
+  })
   name = "controllers.cluster-api-provider-aws.sigs.k8s.io"
 }
 
-resource "aws_iam_role" "awsiam_role_eks_control_plane" {
-  assume_role_policy = {
+resource "aws_iam_role" "aws_iam_role_eks_control_plane" {
+  assume_role_policy = jsonencode({
     Statement = [
       {
         Action = [
@@ -553,15 +576,53 @@ resource "aws_iam_role" "awsiam_role_eks_control_plane" {
       }
     ]
     Version = "2012-10-17"
-  }
-  managed_policy_arns = [
-    "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
-  ]
+  })
   name = "eks-controlplane.cluster-api-provider-aws.sigs.k8s.io"
 }
 
-resource "aws_iam_role" "awsiam_role_nodes" {
-  assume_role_policy = {
+resource "aws_iam_role_policy_attachment" "control-plane" {
+  role       = aws_iam_role.aws_iam_role_eks_control_plane.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+}
+
+resource "aws_iam_role" "aws_iam_role_eks_nodegroup" {
+  assume_role_policy = jsonencode({
+    Statement = [
+      {
+        Action = [
+          "sts:AssumeRole"
+        ]
+        Effect = "Allow"
+        Principal = {
+          Service = [
+            "ec2.amazonaws.com",
+            "eks.amazonaws.com"
+          ]
+        }
+      }
+    ]
+    Version = "2012-10-17"
+  })
+  name = "eks-nodegroup.cluster-api-provider-aws.sigs.k8s.io"
+}
+
+resource "aws_iam_role_policy_attachment" "cp-worker" {
+  role       = aws_iam_role.aws_iam_role_eks_control_plane.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "cp-cni" {
+  role       = aws_iam_role.aws_iam_role_eks_control_plane.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+}
+
+resource "aws_iam_role_policy_attachment" "cp-ecr" {
+  role       = aws_iam_role.aws_iam_role_eks_control_plane.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+}
+
+resource "aws_iam_role" "aws_iam_role_nodes" {
+  assume_role_policy = jsonencode({
     Statement = [
       {
         Action = [
@@ -576,10 +637,20 @@ resource "aws_iam_role" "awsiam_role_nodes" {
       }
     ]
     Version = "2012-10-17"
-  }
-  managed_policy_arns = [
-    "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy",
-    "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
-  ]
+  })
   name = "nodes.cluster-api-provider-aws.sigs.k8s.io"
+}
+resource "aws_iam_role_policy_attachment" "node-worker" {
+  role       = aws_iam_role.aws_iam_role_nodes.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "node-cni" {
+  role       = aws_iam_role.aws_iam_role_nodes.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+}
+
+resource "aws_iam_role_policy_attachment" "node-ecr" {
+  role       = aws_iam_role.aws_iam_role_nodes.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }

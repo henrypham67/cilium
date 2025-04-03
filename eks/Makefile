@@ -27,7 +27,7 @@ apply: ## Apply Terraform changes
 
 .PHONY: destroy
 destroy: ## Destroy Terraform-managed infrastructure
-	terraform destroy -var-file=$(TF_VAR_FILE) -auto-approve
+	terraform destroy -auto-approve
 
 .PHONY: fmt
 fmt: ## Format Terraform code
@@ -75,17 +75,34 @@ output: ## Show Terraform outputs
 state-list: ## List resources in Terraform state
 	terraform state list
 
-.PHONY: create-vars
-create-vars: ## Create terraform.tfvars file template
-	@if [ ! -f terraform.tfvars ]; then \
-		echo 'github_username = ""' > terraform.tfvars; \
-		echo 'github_token = ""' >> terraform.tfvars; \
-		echo 'github_repository = ""' >> terraform.tfvars; \
-		echo "Created terraform.tfvars template"; \
-	else \
-		echo "terraform.tfvars already exists"; \
-	fi
-
 .PHONY: refresh
 refresh: ## Refresh Terraform state
 	terraform refresh -var-file=$(TF_VAR_FILE)
+
+.PHONY: create-key-pairs
+create-key-pairs:
+	@{ \
+		if ! command -v aws &> /dev/null; then \
+			echo "Error: AWS CLI is not installed." >&2; \
+			exit 1; \
+		fi; \
+		if ! command -v jq &> /dev/null; then \
+			echo "Error: jq is not installed." >&2; \
+			exit 1; \
+		fi; \
+		if [ -f default.pem ]; then \
+			rm -f default.pem; \
+		fi; \
+		aws ec2 create-key-pair --key-name default --output json | jq .KeyMaterial -r > default.pem; \
+		chmod 400 default.pem; \
+	}
+
+
+.PHONY: deploy
+deploy:
+	terraform init -upgrade
+	terraform apply --auto-approve
+
+ssh:
+	ssh -i ${CLUSTER_SSH_KEY} ec2-user@<NODE_IP> \
+    -o "ProxyCommand ssh -W %h:%p -i ${CLUSTER_SSH_KEY} ubuntu@${BASTION_HOST}"

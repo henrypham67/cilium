@@ -91,7 +91,7 @@ module "eks" {
       instance_type = "t3.medium"
 
       min_size = 2
-      max_size = 5
+      max_size = 2
       # This value is ignored after the initial creation
       # https://github.com/bryantbiggs/eks-desired-size-hack
       desired_size = 2
